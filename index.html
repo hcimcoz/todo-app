@@ -381,10 +381,11 @@
         }
 
         async function signup(email, password) {
+            const redirectTo = window.location.origin + window.location.pathname;
             const res = await fetch(`${AUTH_URL}/signup`, {
                 method: 'POST',
                 headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, gotrue_meta_security: { captcha_token: '' }, email_redirect_to: redirectTo })
             });
             const data = await res.json();
 
