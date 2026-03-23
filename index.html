@@ -32,6 +32,124 @@
             font-size: 28px;
         }
 
+        /* Auth styles */
+        .auth-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .auth-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+            font-size: 22px;
+        }
+
+        .auth-container input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .auth-container input:focus {
+            border-color: #4a6cf7;
+        }
+
+        .auth-container .auth-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4a6cf7;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 12px;
+        }
+
+        .auth-container .auth-btn:hover {
+            background: #3a5ce5;
+        }
+
+        .auth-container .switch-link {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .auth-container .switch-link a {
+            color: #4a6cf7;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .auth-container .switch-link a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-message {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .auth-message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .auth-message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Header bar */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header-bar h1 {
+            margin-bottom: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #888;
+        }
+
+        .logout-btn {
+            padding: 6px 12px;
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            color: #666;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        /* Todo styles */
         .input-row {
             display: flex;
             gap: 8px;
@@ -159,40 +277,201 @@
             padding: 32px;
             font-size: 15px;
         }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Todo App</h1>
-        <div class="input-row">
-            <input type="text" id="todoInput" placeholder="Yeni görev ekle...">
-            <button onclick="addTodo()">Ekle</button>
+        <!-- Auth Section -->
+        <div id="authSection">
+            <h1>Todo App</h1>
+            <div class="auth-container">
+                <h2 id="authTitle">Giriş Yap</h2>
+                <div id="authMessage" class="auth-message hidden"></div>
+                <input type="email" id="authEmail" placeholder="E-posta adresi">
+                <input type="password" id="authPassword" placeholder="Şifre">
+                <button class="auth-btn" onclick="handleAuth()">
+                    <span id="authBtnText">Giriş Yap</span>
+                </button>
+                <div class="switch-link">
+                    <span id="switchText">Hesabın yok mu?</span>
+                    <a onclick="toggleAuthMode()"><span id="switchLink">Kayıt Ol</span></a>
+                </div>
+            </div>
         </div>
-        <div class="filters">
-            <button class="active" onclick="setFilter('all', this)">Tümü</button>
-            <button onclick="setFilter('active', this)">Aktif</button>
-            <button onclick="setFilter('done', this)">Tamamlanan</button>
+
+        <!-- App Section -->
+        <div id="appSection" class="hidden">
+            <div class="header-bar">
+                <h1>Todo App</h1>
+                <div class="user-info">
+                    <span id="userEmail"></span>
+                    <button class="logout-btn" onclick="logout()">Çıkış</button>
+                </div>
+            </div>
+            <div class="input-row">
+                <input type="text" id="todoInput" placeholder="Yeni görev ekle...">
+                <button onclick="addTodo()">Ekle</button>
+            </div>
+            <div class="filters">
+                <button class="active" onclick="setFilter('all', this)">Tümü</button>
+                <button onclick="setFilter('active', this)">Aktif</button>
+                <button onclick="setFilter('done', this)">Tamamlanan</button>
+            </div>
+            <ul class="todo-list" id="todoList"></ul>
         </div>
-        <ul class="todo-list" id="todoList"></ul>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://kwnjvxuwfmqbylecgnjo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3bmp2eHV3Zm1xYnlsZWNnbmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODAzNTksImV4cCI6MjA4OTg1NjM1OX0.Ztm-5ZA67ws5KYAqqaVwZ-98ry7qELKfORjnXt9A1s8';
+        const AUTH_URL = `${SUPABASE_URL}/auth/v1`;
         const API = `${SUPABASE_URL}/rest/v1/todos`;
-        const headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-        };
 
+        let session = JSON.parse(localStorage.getItem('supabase_session') || 'null');
         let todos = [];
         let filter = 'all';
         let editingId = null;
+        let isLoginMode = true;
 
+        function getHeaders() {
+            return {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            };
+        }
+
+        // Auth functions
+        function showMessage(text, type) {
+            const el = document.getElementById('authMessage');
+            el.textContent = text;
+            el.className = `auth-message ${type}`;
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('authTitle').textContent = isLoginMode ? 'Giriş Yap' : 'Kayıt Ol';
+            document.getElementById('authBtnText').textContent = isLoginMode ? 'Giriş Yap' : 'Kayıt Ol';
+            document.getElementById('switchText').textContent = isLoginMode ? 'Hesabın yok mu?' : 'Zaten hesabın var mı?';
+            document.getElementById('switchLink').textContent = isLoginMode ? 'Kayıt Ol' : 'Giriş Yap';
+            document.getElementById('authMessage').className = 'auth-message hidden';
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+
+            if (!email || !password) {
+                showMessage('E-posta ve şifre gerekli.', 'error');
+                return;
+            }
+            if (password.length < 6) {
+                showMessage('Şifre en az 6 karakter olmalı.', 'error');
+                return;
+            }
+
+            if (isLoginMode) {
+                await login(email, password);
+            } else {
+                await signup(email, password);
+            }
+        }
+
+        async function signup(email, password) {
+            const res = await fetch(`${AUTH_URL}/signup`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (data.error || res.status >= 400) {
+                showMessage(data.error_description || data.msg || 'Kayıt başarısız.', 'error');
+                return;
+            }
+
+            if (data.identities && data.identities.length === 0) {
+                showMessage('Bu e-posta zaten kayıtlı.', 'error');
+                return;
+            }
+
+            showMessage('Kayıt başarılı! Lütfen e-postanıza gelen onay linkine tıklayın.', 'success');
+            document.getElementById('authEmail').value = '';
+            document.getElementById('authPassword').value = '';
+        }
+
+        async function login(email, password) {
+            const res = await fetch(`${AUTH_URL}/token?grant_type=password`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (data.error || res.status >= 400) {
+                const msg = data.error_description || data.msg || 'Giriş başarısız.';
+                if (msg.includes('Email not confirmed')) {
+                    showMessage('E-postanız henüz onaylanmamış. Lütfen gelen kutunuzu kontrol edin.', 'error');
+                } else {
+                    showMessage(msg, 'error');
+                }
+                return;
+            }
+
+            session = data;
+            localStorage.setItem('supabase_session', JSON.stringify(session));
+            showApp();
+        }
+
+        async function logout() {
+            if (session) {
+                await fetch(`${AUTH_URL}/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }).catch(() => {});
+            }
+            session = null;
+            localStorage.removeItem('supabase_session');
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('appSection').classList.add('hidden');
+            document.getElementById('authMessage').className = 'auth-message hidden';
+        }
+
+        async function refreshSession() {
+            if (!session || !session.refresh_token) return false;
+            const res = await fetch(`${AUTH_URL}/token?grant_type=refresh_token`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: session.refresh_token })
+            });
+            if (!res.ok) return false;
+            session = await res.json();
+            localStorage.setItem('supabase_session', JSON.stringify(session));
+            return true;
+        }
+
+        function showApp() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+            document.getElementById('userEmail').textContent = session.user.email;
+            fetchTodos();
+        }
+
+        // Todo functions
         async function fetchTodos() {
-            const res = await fetch(`${API}?order=created_at.asc`, { headers });
+            const res = await fetch(`${API}?order=created_at.asc`, { headers: getHeaders() });
+            if (res.status === 401) {
+                const refreshed = await refreshSession();
+                if (refreshed) return fetchTodos();
+                return logout();
+            }
             todos = await res.json();
             render();
         }
@@ -240,8 +519,8 @@
             input.value = '';
             await fetch(API, {
                 method: 'POST',
-                headers,
-                body: JSON.stringify({ text, done: false })
+                headers: getHeaders(),
+                body: JSON.stringify({ text, done: false, user_id: session.user.id })
             });
             await fetchTodos();
         }
@@ -250,7 +529,7 @@
             const todo = todos.find(t => t.id === id);
             await fetch(`${API}?id=eq.${id}`, {
                 method: 'PATCH',
-                headers,
+                headers: getHeaders(),
                 body: JSON.stringify({ done: !todo.done })
             });
             await fetchTodos();
@@ -271,7 +550,7 @@
             if (text) {
                 await fetch(`${API}?id=eq.${id}`, {
                     method: 'PATCH',
-                    headers,
+                    headers: getHeaders(),
                     body: JSON.stringify({ text })
                 });
             }
@@ -286,7 +565,7 @@
         async function remove(id) {
             await fetch(`${API}?id=eq.${id}`, {
                 method: 'DELETE',
-                headers
+                headers: getHeaders()
             });
             await fetchTodos();
         }
@@ -302,7 +581,17 @@
             if (e.key === 'Enter') addTodo();
         });
 
-        fetchTodos();
+        document.getElementById('authPassword').addEventListener('keydown', e => {
+            if (e.key === 'Enter') handleAuth();
+        });
+
+        // Check existing session on load
+        if (session && session.access_token) {
+            refreshSession().then(ok => {
+                if (ok) showApp();
+                else logout();
+            });
+        }
     </script>
 </body>
 </html>
