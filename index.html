@@ -585,12 +585,49 @@
             if (e.key === 'Enter') handleAuth();
         });
 
-        // Check existing session on load
-        if (session && session.access_token) {
-            refreshSession().then(ok => {
-                if (ok) showApp();
-                else logout();
+        // Handle email confirmation redirect (parse token from URL hash)
+        function handleRedirectToken() {
+            const hash = window.location.hash.substring(1);
+            if (!hash) return false;
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            const type = params.get('type');
+            if (!accessToken) return false;
+
+            // Clear the hash from URL
+            history.replaceState(null, '', window.location.pathname);
+
+            // Fetch user info and build session
+            fetch(`${AUTH_URL}/user`, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            })
+            .then(res => res.json())
+            .then(user => {
+                if (user.id) {
+                    session = {
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                        user: user
+                    };
+                    localStorage.setItem('supabase_session', JSON.stringify(session));
+                    showApp();
+                }
             });
+            return true;
+        }
+
+        // Check existing session on load
+        if (!handleRedirectToken()) {
+            if (session && session.access_token) {
+                refreshSession().then(ok => {
+                    if (ok) showApp();
+                    else logout();
+                });
+            }
         }
     </script>
 </body>
