@@ -177,11 +177,24 @@
     </div>
 
     <script>
-        let todos = JSON.parse(localStorage.getItem('todos') || '[]');
-        let filter = 'all';
+        const SUPABASE_URL = 'https://kwnjvxuwfmqbylecgnjo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3bmp2eHV3Zm1xYnlsZWNnbmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyODAzNTksImV4cCI6MjA4OTg1NjM1OX0.Ztm-5ZA67ws5KYAqqaVwZ-98ry7qELKfORjnXt9A1s8';
+        const API = `${SUPABASE_URL}/rest/v1/todos`;
+        const headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        };
 
-        function save() {
-            localStorage.setItem('todos', JSON.stringify(todos));
+        let todos = [];
+        let filter = 'all';
+        let editingId = null;
+
+        async function fetchTodos() {
+            const res = await fetch(`${API}?order=created_at.asc`, { headers });
+            todos = await res.json();
+            render();
         }
 
         function render() {
@@ -195,22 +208,21 @@
                 return;
             }
 
-            list.innerHTML = filtered.map((t, i) => {
-                const idx = todos.indexOf(t);
-                if (t.editing) {
+            list.innerHTML = filtered.map(t => {
+                if (editingId === t.id) {
                     return `
                     <li class="todo-item">
-                        <input class="edit-input" id="edit-${idx}" value="${escapeHtml(t.text)}"
-                            onkeydown="if(event.key==='Enter')saveEdit(${idx});if(event.key==='Escape')cancelEdit(${idx});"
-                            onblur="saveEdit(${idx})">
+                        <input class="edit-input" id="edit-${t.id}" value="${escapeHtml(t.text)}"
+                            onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit();"
+                            onblur="saveEdit(${t.id})">
                     </li>`;
                 }
                 return `
                 <li class="todo-item ${t.done ? 'done' : ''}">
-                    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggle(${idx})">
-                    <span ondblclick="startEdit(${idx})">${escapeHtml(t.text)}</span>
-                    <button class="edit-btn" onclick="startEdit(${idx})">&#9998;</button>
-                    <button class="delete-btn" onclick="remove(${idx})">&times;</button>
+                    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggle(${t.id})">
+                    <span ondblclick="startEdit(${t.id})">${escapeHtml(t.text)}</span>
+                    <button class="edit-btn" onclick="startEdit(${t.id})">&#9998;</button>
+                    <button class="delete-btn" onclick="remove(${t.id})">&times;</button>
                 </li>`;
             }).join('');
         }
@@ -221,48 +233,62 @@
             return d.innerHTML;
         }
 
-        function addTodo() {
+        async function addTodo() {
             const input = document.getElementById('todoInput');
             const text = input.value.trim();
             if (!text) return;
-            todos.push({ text, done: false });
             input.value = '';
-            save();
-            render();
+            await fetch(API, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ text, done: false })
+            });
+            await fetchTodos();
         }
 
-        function toggle(idx) {
-            todos[idx].done = !todos[idx].done;
-            save();
-            render();
+        async function toggle(id) {
+            const todo = todos.find(t => t.id === id);
+            await fetch(`${API}?id=eq.${id}`, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify({ done: !todo.done })
+            });
+            await fetchTodos();
         }
 
-        function startEdit(idx) {
-            todos.forEach((t, i) => t.editing = i === idx);
+        function startEdit(id) {
+            editingId = id;
             render();
-            const input = document.getElementById('edit-' + idx);
+            const input = document.getElementById('edit-' + id);
             if (input) { input.focus(); input.selectionStart = input.value.length; }
         }
 
-        function saveEdit(idx) {
-            const input = document.getElementById('edit-' + idx);
+        async function saveEdit(id) {
+            const input = document.getElementById('edit-' + id);
             if (!input) return;
             const text = input.value.trim();
-            if (text) todos[idx].text = text;
-            delete todos[idx].editing;
-            save();
+            editingId = null;
+            if (text) {
+                await fetch(`${API}?id=eq.${id}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify({ text })
+                });
+            }
+            await fetchTodos();
+        }
+
+        function cancelEdit() {
+            editingId = null;
             render();
         }
 
-        function cancelEdit(idx) {
-            delete todos[idx].editing;
-            render();
-        }
-
-        function remove(idx) {
-            todos.splice(idx, 1);
-            save();
-            render();
+        async function remove(id) {
+            await fetch(`${API}?id=eq.${id}`, {
+                method: 'DELETE',
+                headers
+            });
+            await fetchTodos();
         }
 
         function setFilter(f, btn) {
@@ -276,7 +302,7 @@
             if (e.key === 'Enter') addTodo();
         });
 
-        render();
+        fetchTodos();
     </script>
 </body>
 </html>
