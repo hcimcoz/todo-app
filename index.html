@@ -125,6 +125,7 @@
             color: #aaa;
         }
 
+        .todo-item .edit-btn,
         .todo-item .delete-btn {
             background: none;
             border: none;
@@ -135,8 +136,21 @@
             transition: color 0.2s;
         }
 
+        .todo-item .edit-btn:hover {
+            color: #f39c12;
+        }
+
         .todo-item .delete-btn:hover {
             color: #e74c3c;
+        }
+
+        .todo-item .edit-input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 2px solid #4a6cf7;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
         }
 
         .empty {
@@ -183,10 +197,19 @@
 
             list.innerHTML = filtered.map((t, i) => {
                 const idx = todos.indexOf(t);
+                if (t.editing) {
+                    return `
+                    <li class="todo-item">
+                        <input class="edit-input" id="edit-${idx}" value="${escapeHtml(t.text)}"
+                            onkeydown="if(event.key==='Enter')saveEdit(${idx});if(event.key==='Escape')cancelEdit(${idx});"
+                            onblur="saveEdit(${idx})">
+                    </li>`;
+                }
                 return `
                 <li class="todo-item ${t.done ? 'done' : ''}">
                     <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggle(${idx})">
-                    <span>${escapeHtml(t.text)}</span>
+                    <span ondblclick="startEdit(${idx})">${escapeHtml(t.text)}</span>
+                    <button class="edit-btn" onclick="startEdit(${idx})">&#9998;</button>
                     <button class="delete-btn" onclick="remove(${idx})">&times;</button>
                 </li>`;
             }).join('');
@@ -211,6 +234,28 @@
         function toggle(idx) {
             todos[idx].done = !todos[idx].done;
             save();
+            render();
+        }
+
+        function startEdit(idx) {
+            todos.forEach((t, i) => t.editing = i === idx);
+            render();
+            const input = document.getElementById('edit-' + idx);
+            if (input) { input.focus(); input.selectionStart = input.value.length; }
+        }
+
+        function saveEdit(idx) {
+            const input = document.getElementById('edit-' + idx);
+            if (!input) return;
+            const text = input.value.trim();
+            if (text) todos[idx].text = text;
+            delete todos[idx].editing;
+            save();
+            render();
+        }
+
+        function cancelEdit(idx) {
+            delete todos[idx].editing;
             render();
         }
 
